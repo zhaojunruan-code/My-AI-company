@@ -64,6 +64,9 @@ export interface HookProvider {
 
   /** Session directories to scan. Undefined = no file fallback. */
   getSessionDirs?(workspacePath: string): string[];
+  /** Root directory containing all session project subdirectories (e.g. ~/.claude/projects).
+   *  Used for global session scanning and opening the sessions folder in the file manager. */
+  getProjectsRoot?(): string;
   /** Glob pattern for session files (e.g., '*.jsonl'). */
   readonly sessionFilePattern?: string;
   /** Parse one line of a transcript file into an AgentEvent. */

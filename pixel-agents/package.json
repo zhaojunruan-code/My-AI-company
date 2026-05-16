@@ -66,7 +66,8 @@
     "format:check": "prettier --check \"src/**/*.ts\" \"server/**/*.ts\" \"shared/**/*.ts\" \"webview-ui/src/**/*.{ts,tsx,css}\" \"*.{js,mjs}\" \"webview-ui/*.{js,ts}\"",
     "test:webview": "cd webview-ui && npm test",
     "test:server": "cd server && npm test",
-    "test": "npm run test:webview && npm run test:server",
+    "test:electron": "node --test electron/__tests__/utils.test.cjs",
+    "test": "npm run test:webview && npm run test:server && npm run test:electron",
     "e2e": "playwright test --config e2e/playwright.config.ts",
     "e2e:debug": "playwright test --config e2e/playwright.config.ts --debug",
     "electron:dev": "node scripts/electron-dev.mjs",
@@ -104,5 +105,8 @@
     "webview-ui/src/**/*.{ts,tsx}": "eslint --fix",
     "*.{ts,tsx,js,mjs,css,json,md}": "prettier --write",
     "webview-ui/**/*.{ts,tsx,js,css,json}": "prettier --write"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.3"
   }
 }

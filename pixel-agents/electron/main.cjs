@@ -6,7 +6,26 @@ const os = require('node:os');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 
+// electron-updater: only active in packaged builds to avoid noise during development
+let autoUpdater = null;
+if (app.isPackaged) {
+  try {
+    autoUpdater = require('electron-updater').autoUpdater;
+    autoUpdater.logger = null; // suppress verbose logs; errors surface via dialog
+  } catch {
+    // Graceful degradation: app still works without auto-update capability
+  }
+}
+
 const { version: APP_VERSION } = require('../package.json');
+const {
+  isObject,
+  isLayout,
+  sanitizeWorkspaceFolders: _sanitizeWorkspaceFolders,
+  sanitizePersistedAgents,
+  DEFAULT_DESKTOP_STATE,
+  mergeDesktopState,
+} = require('./utils.cjs');
 const {
   DISMISSED_COOLDOWN_MS,
   EXTERNAL_ACTIVE_THRESHOLD_MS,
@@ -48,17 +67,11 @@ protocol.registerSchemesAsPrivileged([
   },
 ]);
 
-const DEFAULT_DESKTOP_STATE = Object.freeze({
-  soundEnabled: true,
-  lastSeenVersion: '',
-  watchAllSessions: false,
-  alwaysShowLabels: false,
-  hooksEnabled: false,
-  hooksInfoShown: true,
-  workspaceFolders: [],
-  agents: [],
-  agentSeats: {},
-});
+// DEFAULT_DESKTOP_STATE, isObject, isLayout, sanitizePersistedAgents imported from utils.cjs
+
+function sanitizeWorkspaceFolders(folders) {
+  return _sanitizeWorkspaceFolders(folders, fs.existsSync, fs.statSync);
+}
 
 let mainWindow = null;
 let nextAgentId = 1;
@@ -274,16 +287,9 @@ function getDesktopStateFilePath() {
 
 function readDesktopState() {
   const saved = readJson(getDesktopStateFilePath(), {});
-  return {
-    ...DEFAULT_DESKTOP_STATE,
-    ...saved,
-    workspaceFolders: sanitizeWorkspaceFolders(saved.workspaceFolders),
-    agents: sanitizePersistedAgents(saved.agents),
-    agentSeats:
-      saved.agentSeats && typeof saved.agentSeats === 'object' && !Array.isArray(saved.agentSeats)
-        ? saved.agentSeats
-        : {},
-  };
+  const state = mergeDesktopState(saved);
+  state.workspaceFolders = sanitizeWorkspaceFolders(saved.workspaceFolders);
+  return state;
 }
 
 function writeDesktopState(updates) {
@@ -296,20 +302,6 @@ function getLayoutFilePath() {
   return path.join(getDataDir(), LAYOUT_FILE_NAME);
 }
 
-function isObject(value) {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
-
-function isLayout(value) {
-  return (
-    isObject(value) &&
-    value.version === 1 &&
-    typeof value.cols === 'number' &&
-    typeof value.rows === 'number' &&
-    Array.isArray(value.tiles) &&
-    Array.isArray(value.furniture)
-  );
-}
 
 function readLayoutFromFile() {
   const layout = readJson(getLayoutFilePath(), null);
@@ -425,28 +417,6 @@ function sanitizeWorkspaceFolders(folders) {
     });
 }
 
-function sanitizePersistedAgents(savedAgents) {
-  if (!Array.isArray(savedAgents)) {
-    return [];
-  }
-
-  return savedAgents
-    .filter((agent) => isObject(agent) && typeof agent.id === 'number')
-    .map((agent) => ({
-      id: agent.id,
-      sessionId: typeof agent.sessionId === 'string' ? agent.sessionId : '',
-      isExternal: agent.isExternal === true,
-      jsonlFile: typeof agent.jsonlFile === 'string' ? agent.jsonlFile : '',
-      projectDir: typeof agent.projectDir === 'string' ? agent.projectDir : '',
-      folderName: typeof agent.folderName === 'string' ? agent.folderName : undefined,
-      teamName: typeof agent.teamName === 'string' ? agent.teamName : undefined,
-      agentName: typeof agent.agentName === 'string' ? agent.agentName : undefined,
-      isTeamLead: typeof agent.isTeamLead === 'boolean' ? agent.isTeamLead : undefined,
-      leadAgentId: typeof agent.leadAgentId === 'number' ? agent.leadAgentId : undefined,
-      teamUsesTmux: typeof agent.teamUsesTmux === 'boolean' ? agent.teamUsesTmux : undefined,
-    }))
-    .filter((agent) => agent.sessionId || agent.jsonlFile);
-}
 
 function rememberWorkspaceFolder(folderPath) {
   const resolved = path.resolve(folderPath);
@@ -498,18 +468,15 @@ const rendererWebview = Object.freeze({
   },
 });
 
+function getProviderProjectsRoot() {
+  return claudeProvider.getProjectsRoot?.() ?? path.join(os.homedir(), '.claude', 'projects');
+}
+
 function getProjectDirPath(cwd) {
   const workspacePath = cwd || readDesktopState().workspaceFolders[0]?.path || os.homedir();
   const [projectDir] = claudeProvider.getSessionDirs
     ? claudeProvider.getSessionDirs(workspacePath)
-    : [
-        path.join(
-          os.homedir(),
-          '.claude',
-          'projects',
-          workspacePath.replace(/[^a-zA-Z0-9-]/g, '-'),
-        ),
-      ];
+    : [path.join(getProviderProjectsRoot(), workspacePath.replace(/[^a-zA-Z0-9-]/g, '-'))];
   return projectDir;
 }
 
@@ -928,7 +895,7 @@ function scanExternalDir(projectDir) {
 }
 
 function scanGlobalProjectDirs() {
-  const projectsRoot = path.join(os.homedir(), '.claude', 'projects');
+  const projectsRoot = getProviderProjectsRoot();
   let dirs;
   try {
     dirs = fs.readdirSync(projectsRoot, { withFileTypes: true }).filter((dir) => dir.isDirectory());
@@ -1127,19 +1094,45 @@ function initHookHandling() {
     });
 }
 
-function buildClaudeArgs(sessionId, bypassPermissions) {
-  const args = ['--session-id', sessionId];
+function buildAgentLaunchCommand(sessionId, cwd, bypassPermissions) {
+  const launch = claudeProvider.buildLaunchCommand
+    ? claudeProvider.buildLaunchCommand(sessionId, cwd)
+    : { command: 'claude', args: ['--session-id', sessionId] };
+  const args = [...launch.args];
+  // --dangerously-skip-permissions is Claude-specific; future providers handle via their own flags
   if (bypassPermissions) {
     args.push('--dangerously-skip-permissions');
   }
-  return args;
+  return { command: launch.command, args };
 }
 
-function launchClaudeInExternalTerminal(cwd, sessionId, bypassPermissions) {
-  const args = buildClaudeArgs(sessionId, bypassPermissions);
+// Linux: ordered list of terminal emulators with their argument builders
+const LINUX_TERMINALS = [
+  { bin: 'x-terminal-emulator', buildArgs: (cmd) => ['-e', 'sh', '-lc', cmd] },
+  { bin: 'gnome-terminal',      buildArgs: (cmd) => ['--', 'sh', '-lc', cmd] },
+  { bin: 'konsole',             buildArgs: (cmd) => ['-e', 'sh', '-lc', cmd] },
+  { bin: 'xfce4-terminal',      buildArgs: (cmd) => ['-e', `sh -lc ${JSON.stringify(cmd)}`] },
+  { bin: 'xterm',               buildArgs: (cmd) => ['-e', 'sh', '-lc', cmd] },
+];
+
+function findLinuxTerminal() {
+  for (const terminal of LINUX_TERMINALS) {
+    try {
+      const result = childProcess.spawnSync('which', [terminal.bin], { encoding: 'utf8' });
+      if (result.status === 0 && result.stdout.trim()) return terminal;
+    } catch {
+      // continue to next
+    }
+  }
+  return null;
+}
+
+function launchAgentInExternalTerminal(cwd, sessionId, bypassPermissions) {
+  const { command, args } = buildAgentLaunchCommand(sessionId, cwd, bypassPermissions);
+  const quotedArgs = args.map((arg) => JSON.stringify(arg)).join(' ');
 
   if (process.platform === 'win32') {
-    const child = childProcess.spawn('cmd.exe', ['/k', 'claude', ...args], {
+    const child = childProcess.spawn('cmd.exe', ['/k', command, ...args], {
       cwd,
       detached: true,
       stdio: 'ignore',
@@ -1150,18 +1143,25 @@ function launchClaudeInExternalTerminal(cwd, sessionId, bypassPermissions) {
   }
 
   if (process.platform === 'darwin') {
-    const command = `cd ${JSON.stringify(cwd)} && claude ${args.map((arg) => JSON.stringify(arg)).join(' ')}`;
+    const shellCmd = `cd ${JSON.stringify(cwd)} && ${command} ${quotedArgs}`;
     const child = childProcess.spawn(
       'osascript',
-      ['-e', `tell application "Terminal" to do script ${JSON.stringify(command)}`],
+      ['-e', `tell application "Terminal" to do script ${JSON.stringify(shellCmd)}`],
       { detached: true, stdio: 'ignore' },
     );
     child.unref();
     return;
   }
 
-  const command = `cd ${JSON.stringify(cwd)} && claude ${args.map((arg) => JSON.stringify(arg)).join(' ')}; exec sh`;
-  const child = childProcess.spawn('x-terminal-emulator', ['-e', 'sh', '-lc', command], {
+  // Linux: try terminal emulators in priority order
+  const terminal = findLinuxTerminal();
+  if (!terminal) {
+    throw new Error(
+      'No terminal emulator found. Install one of: x-terminal-emulator, gnome-terminal, konsole, xfce4-terminal, xterm',
+    );
+  }
+  const shellCmd = `cd ${JSON.stringify(cwd)} && ${command} ${quotedArgs}; exec sh`;
+  const child = childProcess.spawn(terminal.bin, terminal.buildArgs(shellCmd), {
     detached: true,
     stdio: 'ignore',
   });
@@ -1181,7 +1181,7 @@ async function handleOpenClaude(message) {
   const expectedFile = path.join(projectDir, `${sessionId}.jsonl`);
 
   try {
-    launchClaudeInExternalTerminal(folder.path, sessionId, message.bypassPermissions === true);
+    launchAgentInExternalTerminal(folder.path, sessionId, message.bypassPermissions === true);
   } catch (error) {
     nextAgentId -= 1;
     showError(
@@ -1272,6 +1272,7 @@ function sendInitialState() {
   sendToRenderer({
     type: 'settingsLoaded',
     soundEnabled: state.soundEnabled,
+    language: state.language,
     lastSeenVersion: state.lastSeenVersion,
     extensionVersion: APP_VERSION,
     watchAllSessions: state.watchAllSessions,
@@ -1392,7 +1393,7 @@ function handleRemoveExternalAssetDirectory(message) {
 }
 
 async function handleOpenSessionsFolder() {
-  const sessionsDir = path.join(os.homedir(), '.claude', 'projects');
+  const sessionsDir = getProviderProjectsRoot();
   fs.mkdirSync(sessionsDir, { recursive: true });
   const error = await shell.openPath(sessionsDir);
   if (error) {
@@ -1481,6 +1482,11 @@ async function handleRendererMessage(message) {
     case 'setSoundEnabled':
       updateSetting('soundEnabled', message.enabled === true);
       break;
+    case 'setLanguage':
+      if (message.language === 'zh' || message.language === 'en') {
+        updateSetting('language', message.language);
+      }
+      break;
     case 'setLastSeenVersion':
       if (typeof message.version === 'string') {
         updateSetting('lastSeenVersion', message.version);
@@ -1546,6 +1552,16 @@ if (!hasSingleInstanceLock) {
     initHookHandling();
     registerIpcHandlers();
     createMainWindow();
+
+    // Check for updates silently after window is ready; only in packaged builds
+    if (autoUpdater) {
+      autoUpdater.on('error', (err) => {
+        appendStartupLog(`auto-update error: ${err.message}`);
+      });
+      autoUpdater.checkForUpdatesAndNotify().catch((err) => {
+        appendStartupLog(`auto-update check failed: ${err.message}`);
+      });
+    }
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) {

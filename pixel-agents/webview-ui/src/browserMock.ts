@@ -174,11 +174,13 @@ async function decodeFurnitureFromPng(
 // ── Public API ─────────────────────────────────────────────────────────────────
 
 /**
- * Call before createRoot() in main.tsx.
- * Fetches all pre-decoded assets from the Vite dev server and stores them
- * for dispatchMockMessages().
+ * Fetch and cache all visual assets (characters, floors, walls, furniture).
+ * Works in both browser (via HTTP) and Electron (via pixel-agents:// protocol).
+ * Must be called before dispatchAssets() / dispatchMockMessages().
+ *
+ * Alias: initBrowserMock() — kept for backwards compatibility with VS Code webview tests.
  */
-export async function initBrowserMock(): Promise<void> {
+export async function initAssets(): Promise<void> {
   console.log('[BrowserMock] Loading assets...');
 
   const base = import.meta.env.BASE_URL; // '/' in dev, '/sub/' with a subpath, './' in production
@@ -236,16 +238,15 @@ export async function initBrowserMock(): Promise<void> {
 }
 
 /**
- * Call inside a useEffect in App.tsx — after the window message listener
- * in useExtensionMessages has been registered.
+ * Dispatch loaded assets as host messages so the webview renderer picks them up.
+ * In browser mode, also dispatches mock settings (no real host to send them).
+ * In Electron/VS Code mode the real host sends settingsLoaded separately — pass
+ * includeMockSettings: false (the default for non-browser runtimes).
+ *
+ * Must be called after initAssets().
+ * Alias: dispatchMockMessages() — kept for backwards compatibility.
  */
-interface DispatchMockMessagesOptions {
-  includeMockSettings?: boolean;
-}
-
-export function dispatchMockMessages({
-  includeMockSettings = true,
-}: DispatchMockMessagesOptions = {}): void {
+export function dispatchAssets({ includeMockSettings = false }: { includeMockSettings?: boolean } = {}): void {
   if (!mockPayload) return;
 
   const { characters, floorSprites, wallSets, furnitureCatalog, furnitureSprites, layout } =
@@ -271,5 +272,10 @@ export function dispatchMockMessages({
     });
   }
 
-  console.log('[BrowserMock] Messages dispatched');
+  console.log('[Assets] Dispatched to renderer');
 }
+
+/** @deprecated Use initAssets() */
+export const initBrowserMock = initAssets;
+/** @deprecated Use dispatchAssets() */
+export const dispatchMockMessages = dispatchAssets;

@@ -14,6 +14,7 @@ import { ZoomControls } from './components/ZoomControls.js';
 import { useEditorActions } from './hooks/useEditorActions.js';
 import { useEditorKeyboard } from './hooks/useEditorKeyboard.js';
 import { useExtensionMessages } from './hooks/useExtensionMessages.js';
+import { I18nProvider, useI18n } from './i18n.js';
 import { OfficeCanvas } from './office/components/OfficeCanvas.js';
 import { ToolOverlay } from './office/components/ToolOverlay.js';
 import { EditorState } from './office/editor/editorState.js';
@@ -35,13 +36,15 @@ function getOfficeState(): OfficeState {
   return officeStateRef.current;
 }
 
-function App() {
+function AppContent() {
+  const { t } = useI18n();
+
   // Browser runtime (dev or static dist): dispatch mock messages after the
   // useExtensionMessages listener has been registered.
   useEffect(() => {
     if (isBrowserRuntime || isElectronRuntime) {
-      void import('./browserMock.js').then(({ dispatchMockMessages }) =>
-        dispatchMockMessages({ includeMockSettings: isBrowserRuntime }),
+      void import('./browserMock.js').then(({ dispatchAssets }) =>
+        dispatchAssets({ includeMockSettings: isBrowserRuntime }),
       );
     }
   }, []);
@@ -167,7 +170,7 @@ function App() {
     })();
 
   if (!layoutReady) {
-    return <div className="w-full h-full flex items-center justify-center ">Loading...</div>;
+    return <div className="w-full h-full flex items-center justify-center ">{t('common.loading')}</div>;
   }
 
   return (
@@ -208,7 +211,7 @@ function App() {
               className="absolute left-1/2 -translate-x-1/2 z-11 bg-accent-bright text-white text-sm py-3 px-8 rounded-none border-2 border-accent shadow-pixel pointer-events-none whitespace-nowrap"
               style={{ top: editor.isDirty ? 64 : 8 }}
             >
-              Rotate (R)
+              {t('editor.rotateHint')}
             </div>
           )}
 
@@ -266,7 +269,7 @@ function App() {
       {/* Hooks first-run tooltip */}
       {!hooksInfoShown && !hooksTooltipDismissed && (
         <Tooltip
-          title="Instant Detection Active"
+          title={t('hooks.tooltipTitle')}
           position="top-right"
           onDismiss={() => {
             setHooksTooltipDismissed(true);
@@ -274,7 +277,7 @@ function App() {
           }}
         >
           <span className="text-sm text-text leading-none">
-            Your agents now respond in real-time.{' '}
+            {t('hooks.tooltipBody')}{' '}
             <span
               className="text-accent cursor-pointer underline"
               onClick={() => {
@@ -283,7 +286,7 @@ function App() {
                 vscode.postMessage({ type: 'setHooksInfoShown' });
               }}
             >
-              View more
+              {t('hooks.viewMore')}
             </span>
           </span>
         </Tooltip>
@@ -293,31 +296,26 @@ function App() {
       <Modal
         isOpen={isHooksInfoOpen}
         onClose={() => setIsHooksInfoOpen(false)}
-        title="Instant Detection is ON"
+        title={t('hooks.modalTitle')}
         zIndex={52}
       >
         <div className="text-base text-text px-10" style={{ lineHeight: 1.4 }}>
-          <p className="mb-8">Your Pixel Agents office now reacts in real-time:</p>
+          <p className="mb-8">{t('hooks.modalIntro')}</p>
           <ul className="mb-8 pl-18 list-disc m-0">
-            <li className="text-sm mb-2">Permission prompts appear instantly</li>
-            <li className="text-sm mb-2">Turn completions detected the moment they happen</li>
-            <li className="text-sm mb-2">Sound notifications play immediately</li>
+            <li className="text-sm mb-2">{t('hooks.modalPermission')}</li>
+            <li className="text-sm mb-2">{t('hooks.modalTurns')}</li>
+            <li className="text-sm mb-2">{t('hooks.modalSound')}</li>
           </ul>
-          <p className="mb-12 text-text-muted">
-            This works through Claude Code Hooks, small event listeners that notify Pixel Agents
-            whenever something happens in your Claude sessions.
-          </p>
+          <p className="mb-12 text-text-muted">{t('hooks.modalBody')}</p>
           <div className="text-center">
             <button
               onClick={() => setIsHooksInfoOpen(false)}
               className="py-4 px-20 text-lg bg-accent text-white border-2 border-accent rounded-none cursor-pointer shadow-pixel"
             >
-              Got it
+              {t('common.gotIt')}
             </button>
           </div>
-          <p className="mt-8 text-xs text-text-muted text-center">
-            To disable, go to Settings {'>'} Instant Detection
-          </p>
+          <p className="mt-8 text-xs text-text-muted text-center">{t('hooks.modalDisableHint')}</p>
         </div>
       </Modal>
 
@@ -369,6 +367,14 @@ function App() {
         <MigrationNotice onDismiss={() => setMigrationNoticeDismissed(true)} />
       )}
     </div>
+  );
+}
+
+function App() {
+  return (
+    <I18nProvider>
+      <AppContent />
+    </I18nProvider>
   );
 }
 

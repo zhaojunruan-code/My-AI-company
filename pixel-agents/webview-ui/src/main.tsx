@@ -8,8 +8,8 @@ import { isBrowserRuntime, isElectronRuntime } from './runtime';
 
 async function main() {
   if (isBrowserRuntime || isElectronRuntime) {
-    const { initBrowserMock } = await import('./browserMock.js');
-    await initBrowserMock();
+    const { initAssets } = await import('./browserMock.js');
+    await initAssets();
   }
   createRoot(document.getElementById('root')!).render(
     <StrictMode>

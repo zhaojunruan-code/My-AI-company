@@ -66,6 +66,10 @@ export function formatToolStatus(toolName: string, input?: unknown): string {
 
 // ── Session dir + launch command ──
 
+function getProjectsRoot(): string {
+  return path.join(os.homedir(), '.claude', 'projects');
+}
+
 function getSessionDirs(workspacePath: string): string[] {
   // Claude stores sessions at ~/.claude/projects/<workspace-path-with-dashes>/.
   // Normalize every non-alphanumeric char (except '-') to '-' to match Claude's
@@ -248,6 +252,7 @@ export const claudeProvider: HookProvider = {
   permissionExemptTools: new Set(['Task', 'Agent', 'AskUserQuestion']),
   subagentToolNames: new Set(['Task', 'Agent']),
 
+  getProjectsRoot,
   getSessionDirs,
   sessionFilePattern: '*.jsonl',
   buildLaunchCommand,

@@ -23,16 +23,34 @@ asarUnpack:
 extraMetadata:
   main: ./electron/main.cjs
 
+# GitHub Releases publish config (used by electron-updater).
+# Set GH_TOKEN env var when running electron-builder to publish a release.
+publish:
+  provider: github
+  owner: pablodelucca
+  repo: pixel-agents
+  releaseType: release
+
 win:
   icon: electron/icon.png
   target:
     - nsis
     - zip
+  # Code signing: set WIN_CSC_LINK (path/URL to .pfx) and WIN_CSC_KEY_PASSWORD in CI.
+  # Leave unset for unsigned dev builds — Windows will show a SmartScreen warning.
+  certificateFile: ${env.WIN_CSC_LINK}
+  certificatePassword: ${env.WIN_CSC_KEY_PASSWORD}
 
 mac:
   icon: electron/icon.png
   target:
     - dmg
+  # Hardened runtime + entitlements required for notarisation on macOS 10.15+.
+  hardenedRuntime: true
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  # Set CSC_LINK (p12/Developer ID cert) and CSC_KEY_PASSWORD in CI for signing.
+  # Set APPLE_ID, APPLE_TEAM_ID, APPLE_APP_SPECIFIC_PASSWORD for notarisation.
 
 linux:
   icon: electron/icon.png
