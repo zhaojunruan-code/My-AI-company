@@ -45,10 +45,11 @@ export const SERVER_JSON_NAME = 'server.json';
 export const HOOK_SCRIPTS_DIR = '.pixel-agents/hooks';
 export const HOOK_API_PREFIX = '/api/hooks';
 
-// Claude-specific constants live in providers/hook/claude/constants.ts.
+// Provider-specific constants live in their own constants.ts files.
 // Re-exported here for backward-compatibility of existing callers that import
 // from '../server/src/constants.js'. New code should import directly from the provider.
 export { CLAUDE_HOOK_EVENTS, CLAUDE_HOOK_SCRIPT_NAME } from './providers/hook/claude/constants.js';
+export { CODEX_HOOK_EVENTS, CODEX_HOOK_SCRIPT_NAME } from './providers/hook/codex/constants.js';
 
 export const HOOK_EVENT_BUFFER_MS = 5_000;
 /** Grace period after SessionEnd(reason=clear/resume) before triggering onSessionEnd.

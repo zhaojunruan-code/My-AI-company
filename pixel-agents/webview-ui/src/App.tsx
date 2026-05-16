@@ -322,6 +322,7 @@ function AppContent() {
       <BottomToolbar
         isEditMode={editor.isEditMode}
         onOpenClaude={editor.handleOpenClaude}
+        onOpenCodex={editor.handleOpenCodex}
         onToggleEditMode={editor.handleToggleEditMode}
         isSettingsOpen={isSettingsOpen}
         onToggleSettings={() => setIsSettingsOpen((v) => !v)}

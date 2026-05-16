@@ -13,6 +13,11 @@ export {
   installHooks,
   uninstallHooks,
 } from '../server/src/providers/hook/claude/claudeHookInstaller.js';
-export { claudeProvider, copyHookScript } from '../server/src/providers/index.js';
+export {
+  claudeProvider,
+  copyHookScript,
+  codexProvider,
+  copyCodexHookScript,
+} from '../server/src/providers/index.js';
 export { PixelAgentsServer } from '../server/src/server.js';
 export { setHookProvider, processTranscriptLine } from '../src/transcriptParser.js';

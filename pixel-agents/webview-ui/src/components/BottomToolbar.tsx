@@ -9,6 +9,7 @@ import { Dropdown, DropdownItem } from './ui/Dropdown.js';
 interface BottomToolbarProps {
   isEditMode: boolean;
   onOpenClaude: () => void;
+  onOpenCodex: () => void;
   onToggleEditMode: () => void;
   isSettingsOpen: boolean;
   onToggleSettings: () => void;
@@ -18,6 +19,7 @@ interface BottomToolbarProps {
 export function BottomToolbar({
   isEditMode,
   onOpenClaude,
+  onOpenCodex,
   onToggleEditMode,
   isSettingsOpen,
   onToggleSettings,
@@ -82,6 +84,33 @@ export function BottomToolbar({
     }
   };
 
+  const [isCodexFolderPickerOpen, setIsCodexFolderPickerOpen] = useState(false);
+  const codexFolderPickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isCodexFolderPickerOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (codexFolderPickerRef.current && !codexFolderPickerRef.current.contains(e.target as Node)) {
+        setIsCodexFolderPickerOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [isCodexFolderPickerOpen]);
+
+  const handleCodexClick = () => {
+    if (hasMultipleFolders) {
+      setIsCodexFolderPickerOpen((v) => !v);
+    } else {
+      onOpenCodex();
+    }
+  };
+
+  const handleCodexFolderSelect = (folder: WorkspaceFolder) => {
+    setIsCodexFolderPickerOpen(false);
+    vscode.postMessage({ type: 'openCodex', folderPath: folder.path });
+  };
+
   return (
     <div className="absolute bottom-10 left-10 z-20 flex items-center gap-4 pixel-panel p-4">
       <div
@@ -119,6 +148,29 @@ export function BottomToolbar({
           ))}
         </Dropdown>
       </div>
+      {/* Codex Agent button */}
+      <div ref={codexFolderPickerRef} className="relative">
+        <Button
+          variant="default"
+          onClick={handleCodexClick}
+          title={t('toolbar.startCodexTitle')}
+          className={isCodexFolderPickerOpen ? 'bg-accent-bright' : undefined}
+        >
+          {t('toolbar.startCodex')}
+        </Button>
+        <Dropdown isOpen={isCodexFolderPickerOpen} className="min-w-128">
+          {workspaceFolders.map((folder) => (
+            <DropdownItem
+              key={folder.path}
+              onClick={() => handleCodexFolderSelect(folder)}
+              className="text-base"
+            >
+              {folder.name}
+            </DropdownItem>
+          ))}
+        </Dropdown>
+      </div>
+
       <Button
         variant={isEditMode ? 'active' : 'default'}
         onClick={onToggleEditMode}

@@ -80,6 +80,8 @@ export class HookEventHandler {
   private lifecycleCallbacks: SessionLifecycleCallbacks = {};
   /** Pending external sessions waiting for a confirmation event (Stop, Notification, etc.). */
   private pendingExternalSessions = new Map<string, PendingExternalSession>();
+  /** Secondary providers registered via registerProvider(). Keyed by provider.id. */
+  private additionalProviders = new Map<string, HookProvider>();
 
   constructor(
     private agents: Map<number, AgentState>,
@@ -89,6 +91,14 @@ export class HookEventHandler {
     private provider: HookProvider,
     private watchAllSessionsRef?: { current: boolean },
   ) {}
+
+  /**
+   * Register an additional HookProvider (e.g. Codex alongside Claude).
+   * Events from `/api/hooks/<provider.id>` are normalized by this provider.
+   */
+  registerProvider(provider: HookProvider): void {
+    this.additionalProviders.set(provider.id, provider);
+  }
 
   /** Merged set of tool names that spawn subagents (teammates + within-turn subagents
    *  when a team provider is attached, or the base HookProvider set otherwise). */
@@ -135,14 +145,13 @@ export class HookEventHandler {
    * @param providerId - Provider that sent the event ('claude', 'codex', etc.)
    * @param event - The hook event payload from the CLI tool
    */
-  handleEvent(_providerId: string, event: HookEvent): void {
+  handleEvent(providerId: string, event: HookEvent): void {
     // ── Provider normalization boundary ───────────────────────────────────────
-    // All raw Claude-specific fields (tool_name, tool_input, agent_type, notification_type,
-    // reason, source) are extracted by provider.normalizeHookEvent. Downstream dispatch
-    // uses the normalized AgentEvent.kind. Raw `event.*` reads are still allowed in a few
-    // places for provider-specific metadata that AgentEvent doesn't capture (transcript_path,
-    // cwd for external-session adoption; agent_type for teammate routing).
-    const normalized = this.provider.normalizeHookEvent(event);
+    // Route to the correct provider by ID so that Codex events use
+    // codexProvider.normalizeHookEvent and Claude events use claudeProvider's.
+    // Falls back to the primary provider (Claude) for unknown provider IDs.
+    const activeProvider = this.additionalProviders.get(providerId) ?? this.provider;
+    const normalized = activeProvider.normalizeHookEvent(event);
     if (!normalized) return; // unknown / uninteresting event -- silently drop
     const normEvent = normalized.event;
     const eventName = event.hook_event_name; // retained for logs only
@@ -265,7 +274,7 @@ export class HookEventHandler {
         pending.cwd,
       );
       // Re-process this event now that the agent exists
-      this.handleEvent(_providerId, event);
+      this.handleEvent(providerId, event);
       return;
     }
 
@@ -295,7 +304,7 @@ export class HookEventHandler {
           console.log(
             `[Pixel Agents] Hook: ${eventName} - unknown session ${event.session_id.slice(0, 8)}..., buffering`,
           );
-        this.bufferEvent(_providerId, event);
+        this.bufferEvent(providerId, event);
       }
       return;
     }

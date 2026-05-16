@@ -40,6 +40,8 @@ const {
   PixelAgentsServer,
   claudeProvider,
   copyHookScript,
+  codexProvider,
+  copyCodexHookScript,
   processTranscriptLine,
   setHookProvider,
   uninstallHooks,
@@ -764,6 +766,13 @@ function trackWorkspaceFolderProjectDirs() {
     : [{ path: os.homedir(), name: path.basename(os.homedir()) }];
   for (const folder of folders) {
     seedProjectDir(getProjectDirPath(folder.path));
+    // Also seed Codex session directories for the same workspace
+    const codexDirs = codexProvider.getSessionDirs
+      ? codexProvider.getSessionDirs(folder.path)
+      : [];
+    for (const dir of codexDirs) {
+      seedProjectDir(dir);
+    }
   }
 }
 
@@ -1021,10 +1030,14 @@ function getHookExtensionPath() {
 function syncHookInstallation(enabled, { uninstallWhenDisabled = true } = {}) {
   hooksEnabled.current = enabled;
   if (enabled) {
-    copyHookScript(getHookExtensionPath());
+    const extensionPath = getHookExtensionPath();
+    copyHookScript(extensionPath);
+    copyCodexHookScript(extensionPath);
     installHooks();
+    codexProvider.installHooks('', '').catch(() => {});
   } else if (uninstallWhenDisabled) {
     uninstallHooks();
+    codexProvider.uninstallHooks().catch(() => {});
   }
 }
 
@@ -1038,6 +1051,10 @@ function initHookHandling() {
     claudeProvider,
     watchAllSessions,
   );
+  // Register Codex as a second provider — events from /api/hooks/codex are
+  // routed through the same HookEventHandler using codexProvider.normalizeHookEvent.
+  hookEventHandler.registerProvider(codexProvider);
+  setHookProvider(claudeProvider); // keep Claude as the primary transcript parser
 
   hookEventHandler.setLifecycleCallbacks({
     onExternalSessionDetected(sessionId, transcriptPath, cwd) {
@@ -1127,8 +1144,8 @@ function findLinuxTerminal() {
   return null;
 }
 
-function launchAgentInExternalTerminal(cwd, sessionId, bypassPermissions) {
-  const { command, args } = buildAgentLaunchCommand(sessionId, cwd, bypassPermissions);
+function launchAgentInExternalTerminal(cwd, sessionId, bypassPermissions, launchOverride) {
+  const { command, args } = launchOverride ?? buildAgentLaunchCommand(sessionId, cwd, bypassPermissions);
   const quotedArgs = args.map((arg) => JSON.stringify(arg)).join(' ');
 
   if (process.platform === 'win32') {
@@ -1166,6 +1183,57 @@ function launchAgentInExternalTerminal(cwd, sessionId, bypassPermissions) {
     stdio: 'ignore',
   });
   child.unref();
+}
+
+async function handleOpenCodex(message) {
+  const folder = await resolveWorkspaceFolder(message.folderPath);
+  if (!folder) return;
+
+  // Codex doesn't accept a pre-supplied session ID — we launch the terminal and
+  // wait for the SessionStart hook to tell us the new session_id, at which point
+  // onExternalSessionDetected creates the agent. We still send agentCreated
+  // immediately so a "pending" character appears in the office right away.
+  const agentId = nextAgentId++;
+  nextTerminalIndex++;
+
+  const launch = codexProvider.buildLaunchCommand
+    ? codexProvider.buildLaunchCommand('', folder.path)
+    : { command: 'codex', args: [] };
+
+  try {
+    launchAgentInExternalTerminal(folder.path, '', false, launch);
+  } catch (error) {
+    nextAgentId -= 1;
+    showError(
+      'Pixel Agents',
+      `Failed to launch Codex from Electron.\n\n${error instanceof Error ? error.message : String(error)}`,
+    );
+    return;
+  }
+
+  const codexProjectDirs = codexProvider.getSessionDirs
+    ? codexProvider.getSessionDirs(folder.path)
+    : [];
+  for (const dir of codexProjectDirs) {
+    seedProjectDir(dir);
+  }
+
+  const agent = createAgentState({
+    id: agentId,
+    sessionId: '',   // filled in by onExternalSessionDetected when hook fires
+    projectDir: codexProjectDirs[0] ?? folder.path,
+    jsonlFile: '',
+    isExternal: false,
+    folderName: folder.name,
+    fileOffset: 0,
+  });
+  agents.set(agentId, agent);
+  activeAgentId.current = agentId;
+  persistAgents();
+  sendToRenderer({ type: 'agentCreated', id: agentId, folderName: folder.name });
+  sendToRenderer({ type: 'agentSelected', id: agentId });
+  sendToRenderer({ type: 'agentStatus', id: agentId, status: 'active' });
+  console.log(`[Pixel Agents] Electron launched Codex in ${folder.path}`);
 }
 
 async function handleOpenClaude(message) {
@@ -1432,6 +1500,9 @@ async function handleRendererMessage(message) {
       break;
     case 'openClaude':
       await handleOpenClaude(message);
+      break;
+    case 'openCodex':
+      await handleOpenCodex(message);
       break;
     case 'focusAgent':
       if (typeof message.id === 'number' && agents.has(message.id)) {
