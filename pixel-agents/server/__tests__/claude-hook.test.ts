@@ -23,7 +23,7 @@ function writeServerJson(port: number, token: string): void {
 function runHookScript(stdin: string): Promise<{ code: number | null; stdout: string }> {
   return new Promise((resolve) => {
     const child = spawn('node', [HOOK_SCRIPT], {
-      env: { ...process.env, HOME: tmpBase },
+      env: { ...process.env, HOME: tmpBase, USERPROFILE: tmpBase },
       stdio: ['pipe', 'pipe', 'pipe'],
       timeout: 5000,
     });
@@ -48,17 +48,16 @@ describe('claude-hook.js integration', () => {
     }
   });
 
-  // Skip if hook script not built
-  function skipIfNotBuilt(): void {
-    if (!fs.existsSync(HOOK_SCRIPT)) {
-      console.warn(`Skipping: ${HOOK_SCRIPT} not found. Run 'npm run compile' first.`);
-    }
+  function expectHookScriptBuilt(): void {
+    expect(
+      fs.existsSync(HOOK_SCRIPT),
+      `${HOOK_SCRIPT} not found. Run 'npm run compile' first.`,
+    ).toBe(true);
   }
 
   // 1. Script reads stdin and POSTs to server
   it('reads stdin and POSTs to server', async () => {
-    skipIfNotBuilt();
-    if (!fs.existsSync(HOOK_SCRIPT)) return;
+    expectHookScriptBuilt();
 
     const received: string[] = [];
     const server = http.createServer((req, res) => {
@@ -86,8 +85,7 @@ describe('claude-hook.js integration', () => {
 
   // 2. Script exits 0 on missing server.json
   it('exits 0 when server.json is missing', async () => {
-    skipIfNotBuilt();
-    if (!fs.existsSync(HOOK_SCRIPT)) return;
+    expectHookScriptBuilt();
 
     // Don't write server.json
     const { code } = await runHookScript(
@@ -98,8 +96,7 @@ describe('claude-hook.js integration', () => {
 
   // 5. Script exits 0 on invalid stdin
   it('exits 0 on invalid stdin', async () => {
-    skipIfNotBuilt();
-    if (!fs.existsSync(HOOK_SCRIPT)) return;
+    expectHookScriptBuilt();
 
     writeServerJson(9999, 'tok');
     const { code } = await runHookScript('not json at all!!!');
@@ -108,8 +105,7 @@ describe('claude-hook.js integration', () => {
 
   // 6. Script handles server timeout
   it('exits within 5s when server does not respond', async () => {
-    skipIfNotBuilt();
-    if (!fs.existsSync(HOOK_SCRIPT)) return;
+    expectHookScriptBuilt();
 
     // Start a server that never responds
     const server = http.createServer(() => {

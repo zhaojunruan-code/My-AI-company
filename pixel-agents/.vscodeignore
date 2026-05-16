@@ -5,6 +5,10 @@ out/**
 src/**
 webview-ui/**
 scripts/**
+electron/**
+electron-builder.yml
+release/**
+dist/electron/**
 sprites-export/**
 logs/**
 .github/**

@@ -239,7 +239,13 @@ export async function initBrowserMock(): Promise<void> {
  * Call inside a useEffect in App.tsx — after the window message listener
  * in useExtensionMessages has been registered.
  */
-export function dispatchMockMessages(): void {
+interface DispatchMockMessagesOptions {
+  includeMockSettings?: boolean;
+}
+
+export function dispatchMockMessages({
+  includeMockSettings = true,
+}: DispatchMockMessagesOptions = {}): void {
   if (!mockPayload) return;
 
   const { characters, floorSprites, wallSets, furnitureCatalog, furnitureSprites, layout } =
@@ -256,12 +262,14 @@ export function dispatchMockMessages(): void {
   dispatch({ type: 'wallTilesLoaded', sets: wallSets });
   dispatch({ type: 'furnitureAssetsLoaded', catalog: furnitureCatalog, sprites: furnitureSprites });
   dispatch({ type: 'layoutLoaded', layout });
-  dispatch({
-    type: 'settingsLoaded',
-    soundEnabled: false,
-    extensionVersion: '1.3.0',
-    lastSeenVersion: '1.2',
-  });
+  if (includeMockSettings) {
+    dispatch({
+      type: 'settingsLoaded',
+      soundEnabled: false,
+      extensionVersion: '1.3.0',
+      lastSeenVersion: '1.2',
+    });
+  }
 
   console.log('[BrowserMock] Messages dispatched');
 }

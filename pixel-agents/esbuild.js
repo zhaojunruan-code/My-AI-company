@@ -36,7 +36,8 @@ function buildHooks() {
     'server',
     'src',
     'providers',
-    'file',
+    'hook',
+    'claude',
     'hooks',
     'claude-hook.ts',
   );
@@ -51,6 +52,26 @@ function buildHooks() {
     banner: { js: '#!/usr/bin/env node' },
   });
   console.log('✓ Built hooks/ → dist/hooks/');
+}
+
+/**
+ * Bundle the non-UI Electron runtime bridge.
+ * This lets electron/main.cjs reuse the existing hook server and transcript parser
+ * without loading the VS Code extension entry point.
+ */
+function buildElectronRuntime() {
+  const entry = path.join(__dirname, 'electron', 'runtime.ts');
+  if (!fs.existsSync(entry)) return;
+  require('esbuild').buildSync({
+    entryPoints: [entry],
+    bundle: true,
+    platform: 'node',
+    target: 'node18',
+    format: 'cjs',
+    outfile: path.join(__dirname, 'dist', 'electron', 'runtime.cjs'),
+    external: ['vscode'],
+  });
+  console.log('Built Electron runtime -> dist/electron/runtime.cjs');
 }
 
 /**
@@ -98,6 +119,7 @@ async function main() {
     // Copy assets and hooks after build
     copyAssets();
     buildHooks();
+    buildElectronRuntime();
   }
 }
 

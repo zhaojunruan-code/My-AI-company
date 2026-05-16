@@ -1,0 +1,40 @@
+appId: com.pixelagents.desktop
+productName: Pixel Agents
+asar: true
+
+directories:
+  output: release
+
+electronDownload:
+  mirror: https://npmmirror.com/mirrors/electron/
+
+files:
+  - electron/**/*
+  - dist/assets/**/*
+  - dist/electron/**/*
+  - dist/hooks/**/*
+  - dist/webview/**/*
+  - package.json
+  - '!lib/**/*'
+
+asarUnpack:
+  - dist/hooks/**/*
+
+extraMetadata:
+  main: ./electron/main.cjs
+
+win:
+  icon: electron/icon.png
+  target:
+    - nsis
+    - zip
+
+mac:
+  icon: electron/icon.png
+  target:
+    - dmg
+
+linux:
+  icon: electron/icon.png
+  target:
+    - AppImage

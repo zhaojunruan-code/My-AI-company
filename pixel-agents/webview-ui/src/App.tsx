@@ -21,7 +21,7 @@ import { EditorToolbar } from './office/editor/EditorToolbar.js';
 import { OfficeState } from './office/engine/officeState.js';
 import { isRotatable } from './office/layout/furnitureCatalog.js';
 import { EditTool } from './office/types.js';
-import { isBrowserRuntime } from './runtime.js';
+import { isBrowserRuntime, isElectronRuntime } from './runtime.js';
 import { vscode } from './vscodeApi.js';
 
 // Game state lives outside React — updated imperatively by message handlers
@@ -39,8 +39,10 @@ function App() {
   // Browser runtime (dev or static dist): dispatch mock messages after the
   // useExtensionMessages listener has been registered.
   useEffect(() => {
-    if (isBrowserRuntime) {
-      void import('./browserMock.js').then(({ dispatchMockMessages }) => dispatchMockMessages());
+    if (isBrowserRuntime || isElectronRuntime) {
+      void import('./browserMock.js').then(({ dispatchMockMessages }) =>
+        dispatchMockMessages({ includeMockSettings: isBrowserRuntime }),
+      );
     }
   }, []);
 

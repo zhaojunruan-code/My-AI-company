@@ -69,6 +69,10 @@
     "test": "npm run test:webview && npm run test:server",
     "e2e": "playwright test --config e2e/playwright.config.ts",
     "e2e:debug": "playwright test --config e2e/playwright.config.ts --debug",
+    "electron:dev": "node scripts/electron-dev.mjs",
+    "electron:preview": "npm run package && electron electron",
+    "electron:pack": "npm run package && electron-builder --dir",
+    "electron:dist": "npm run package && electron-builder",
     "knip": "knip"
   },
   "devDependencies": {
@@ -77,6 +81,8 @@
     "@types/pngjs": "^6.0.5",
     "@types/vscode": "^1.105.0",
     "@vscode/test-electron": "^2.5.2",
+    "electron": "^35.7.5",
+    "electron-builder": "^26.8.1",
     "esbuild": "^0.28.0",
     "eslint": "^10.0.3",
     "eslint-config-prettier": "^10.1.8",
