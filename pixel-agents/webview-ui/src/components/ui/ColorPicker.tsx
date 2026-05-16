@@ -1,3 +1,4 @@
+import { useI18n } from '../../i18n.js';
 import type { ColorValue } from './types.js';
 
 function ColorSlider({
@@ -39,6 +40,7 @@ interface ColorPickerProps {
 }
 
 export function ColorPicker({ value, onChange, colorize, showColorizeToggle }: ColorPickerProps) {
+  const { t } = useI18n();
   const handleChange = (key: keyof ColorValue, v: number) => {
     onChange({ ...value, [key]: v });
   };
@@ -83,7 +85,7 @@ export function ColorPicker({ value, onChange, colorize, showColorizeToggle }: C
             onChange={(e) => onChange({ ...value, colorize: e.target.checked || undefined })}
             className="accent-accent"
           />
-          Colorize
+          {t('editor.colorize')}
         </label>
       )}
     </div>

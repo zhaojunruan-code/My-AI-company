@@ -1,3 +1,5 @@
+import type { Language } from './i18n.js';
+
 interface ChangelogSection {
   title: string;
   items: string[];
@@ -159,3 +161,136 @@ export const changelogEntries: ChangelogEntry[] = [
     ],
   },
 ];
+
+const zhChangelogEntries: ChangelogEntry[] = [
+  {
+    version: '1.3',
+    sections: [
+      {
+        title: '新功能',
+        items: [
+          'Hooks 优先的会话管理，并提供双模式架构（Hooks + 启发式回退）',
+          '通过 Claude Code Hooks 即时检测 agent 状态',
+          '支持外部会话并识别 Agent 工具',
+          '跨所有工作区文件夹检测多根工作区 agent',
+          '从外部素材目录加载自定义角色',
+          'Webview UI 迁移到 Tailwind CSS v4',
+        ],
+      },
+      {
+        title: '修复',
+        items: ['防止重复恢复，修复工具状态重连，并改进 agent 工具检测'],
+      },
+      {
+        title: '维护',
+        items: ['将 shared/ 纳入 lint、format 和 lint-staged', 'Dependabot 开发依赖分组升级'],
+      },
+    ],
+    contributors: [
+      {
+        name: '@drewf',
+        url: 'https://github.com/drewf',
+        description: '外部会话支持与 Agent 工具识别',
+      },
+      {
+        name: '@Commandershadow9',
+        url: 'https://github.com/Commandershadow9',
+        description: '多根工作区 agent 检测',
+      },
+      {
+        name: '@mitre88',
+        url: 'https://github.com/mitre88',
+        description: '重复恢复、工具状态重连和工具检测修复',
+      },
+      {
+        name: '@noam971',
+        url: 'https://github.com/noam971',
+        description: '重复恢复、工具状态重连和工具检测修复',
+      },
+      {
+        name: '@itsManeka',
+        url: 'https://github.com/itsManeka',
+        description: '从外部素材目录加载自定义角色',
+      },
+      {
+        name: '@pablodelucca',
+        url: 'https://github.com/pablodelucca',
+        description: 'Claude Code Hooks 集成与 Tailwind v4 迁移',
+      },
+      {
+        name: '@NNTin',
+        url: 'https://github.com/NNTin',
+        description: 'Claude Code Hooks 集成与 Tailwind v4 迁移',
+      },
+      {
+        name: '@florintimbuc',
+        url: 'https://github.com/florintimbuc',
+        description: 'Hooks 优先的双模式架构与评审协调',
+      },
+    ],
+  },
+  {
+    version: '1.2',
+    sections: [
+      {
+        title: '新功能',
+        items: [
+          '绕过权限模式：右键点击 “+ Agent” 可跳过工具审批',
+          '外部素材包：从用户定义目录加载家具',
+          '改进座位、子 agent 生成和后台 agent 支持',
+          '新增始终显示 agent 标签的设置',
+          'Agent 连接诊断与 JSONL 解析容错',
+          '用于开发和评审的浏览器预览模式',
+        ],
+      },
+      {
+        title: '修复',
+        items: ['修复 Linux Mint/macOS 在未打开文件夹时 agent 不显示的问题'],
+      },
+      {
+        title: '测试',
+        items: ['使用 mock Claude CLI 的 Playwright 端到端测试'],
+      },
+      {
+        title: '维护',
+        items: ['升级 Vite 8.0、ESLint 10 以及多项依赖', '改进 Dependabot 与徽章更新的 CI 流程'],
+      },
+    ],
+    contributors: [
+      {
+        name: '@marctebo',
+        url: 'https://github.com/marctebo',
+        description: '外部素材包支持',
+      },
+      {
+        name: '@dankadr',
+        url: 'https://github.com/dankadr',
+        description: '绕过权限模式',
+      },
+      {
+        name: '@d4rkd0s',
+        url: 'https://github.com/d4rkd0s',
+        description: '修复 Linux/macOS 未打开文件夹时的问题',
+      },
+      {
+        name: '@daniel-dallimore',
+        url: 'https://github.com/daniel-dallimore',
+        description: '始终显示标签设置',
+      },
+      {
+        name: '@NNTin',
+        url: 'https://github.com/NNTin',
+        description: 'Playwright 端到端测试与浏览器预览模式',
+      },
+      {
+        name: '@florintimbuc',
+        url: 'https://github.com/florintimbuc',
+        description: 'Agent 诊断、JSONL 容错与 CI 改进',
+      },
+    ],
+  },
+];
+
+export function getChangelogEntries(language: Language): ChangelogEntry[] {
+  return language === 'zh' ? zhChangelogEntries : changelogEntries;
+}

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import type { WorkspaceFolder } from '../hooks/useExtensionMessages.js';
+import { useI18n } from '../i18n.js';
 import { vscode } from '../vscodeApi.js';
 import { Button } from './ui/Button.js';
 import { Dropdown, DropdownItem } from './ui/Dropdown.js';
@@ -22,11 +23,12 @@ export function BottomToolbar({
   onToggleSettings,
   workspaceFolders,
 }: BottomToolbarProps) {
+  const { t } = useI18n();
   const [isFolderPickerOpen, setIsFolderPickerOpen] = useState(false);
   const [isBypassMenuOpen, setIsBypassMenuOpen] = useState(false);
   const folderPickerRef = useRef<HTMLDivElement>(null);
   const pendingBypassRef = useRef(false);
-  // Close folder picker / bypass menu on outside click
+
   useEffect(() => {
     if (!isFolderPickerOpen && !isBypassMenuOpen) return;
     const handleClick = (e: MouseEvent) => {
@@ -91,18 +93,18 @@ export function BottomToolbar({
         <Button
           variant="accent"
           onClick={handleAgentClick}
-          title="Start a new Claude agent"
+          title={t('toolbar.startAgentTitle')}
           className={
             isFolderPickerOpen || isBypassMenuOpen
               ? 'bg-accent-bright'
               : 'bg-accent hover:bg-accent-bright'
           }
         >
-          + Claude Agent
+          {t('toolbar.startAgent')}
         </Button>
         <Dropdown isOpen={isBypassMenuOpen}>
           <DropdownItem onClick={() => handleBypassSelect(true)}>
-            Skip permissions mode <span className="text-2xs text-warning">⚠</span>
+            {t('toolbar.skipPermissions')} <span className="text-2xs text-warning">!</span>
           </DropdownItem>
         </Dropdown>
         <Dropdown isOpen={isFolderPickerOpen} className="min-w-128">
@@ -120,16 +122,16 @@ export function BottomToolbar({
       <Button
         variant={isEditMode ? 'active' : 'default'}
         onClick={onToggleEditMode}
-        title="Edit office layout"
+        title={t('toolbar.layoutTitle')}
       >
-        Layout
+        {t('toolbar.layout')}
       </Button>
       <Button
         variant={isSettingsOpen ? 'active' : 'default'}
         onClick={onToggleSettings}
-        title="Settings"
+        title={t('toolbar.settings')}
       >
-        Settings
+        {t('toolbar.settings')}
       </Button>
     </div>
   );

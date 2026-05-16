@@ -19,6 +19,7 @@ import {
   TOOL_OVERLAY_VERTICAL_OFFSET,
 } from '../../constants.js';
 import type { SubagentCharacter } from '../../hooks/useExtensionMessages.js';
+import { useI18n } from '../../i18n.js';
 import type { OfficeState } from '../engine/officeState.js';
 import type { ToolActivity } from '../types.js';
 import { CharacterState, TILE_SIZE } from '../types.js';
@@ -40,23 +41,26 @@ function getActivityText(
   agentId: number,
   agentTools: Record<number, ToolActivity[]>,
   isActive: boolean,
+  formatToolStatus: (status: string) => string,
+  needsApprovalText: string,
+  idleText: string,
 ): string {
   const tools = agentTools[agentId];
   if (tools && tools.length > 0) {
     // Find the latest non-done tool
     const activeTool = [...tools].reverse().find((t) => !t.done);
     if (activeTool) {
-      if (activeTool.permissionWait) return 'Needs approval';
-      return activeTool.status;
+      if (activeTool.permissionWait) return needsApprovalText;
+      return formatToolStatus(activeTool.status);
     }
     // All tools done but agent still active (mid-turn) — keep showing last tool status
     if (isActive) {
       const lastTool = tools[tools.length - 1];
-      if (lastTool) return lastTool.status;
+      if (lastTool) return formatToolStatus(lastTool.status);
     }
   }
 
-  return 'Idle';
+  return idleText;
 }
 
 function getFuelColor(ratio: number): string {
@@ -77,6 +81,7 @@ export function ToolOverlay({
   onCloseAgent,
   alwaysShowOverlay,
 }: ToolOverlayProps) {
+  const { formatToolStatus, t } = useI18n();
   const [, setTick] = useState(0);
   useEffect(() => {
     let rafId = 0;
@@ -130,13 +135,20 @@ export function ToolOverlay({
         let activityText: string;
         if (isSub) {
           if (subHasPermission) {
-            activityText = 'Needs approval';
+            activityText = t('status.needsApproval');
           } else {
             const sub = subagentCharacters.find((s) => s.id === id);
-            activityText = sub ? sub.label : 'Subtask';
+            activityText = sub?.label ? sub.label : t('status.subtask');
           }
         } else {
-          activityText = getActivityText(id, agentTools, ch.isActive);
+          activityText = getActivityText(
+            id,
+            agentTools,
+            ch.isActive,
+            formatToolStatus,
+            t('status.needsApproval'),
+            t('status.idle'),
+          );
         }
 
         // Determine dot color
@@ -154,7 +166,7 @@ export function ToolOverlay({
 
         // Team info
         const isTeamAgent = !!ch.teamName;
-        const teamRoleLabel = ch.isTeamLead ? 'LEAD' : ch.agentName || null;
+        const teamRoleLabel = ch.isTeamLead ? t('status.lead') : ch.agentName || null;
         const totalTokens = ch.inputTokens + ch.outputTokens;
         const tokenRatio = totalTokens / MAX_CONTEXT_TOKENS;
         const hasExtraLines = !!(ch.folderName || teamRoleLabel);
@@ -214,7 +226,7 @@ export function ToolOverlay({
                     e.stopPropagation();
                     onCloseAgent(id);
                   }}
-                  title="Close agent"
+                  title={t('debug.closeAgentTitle')}
                   className="ml-2 shrink-0 leading-none"
                 >
                   ×
@@ -228,9 +240,12 @@ export function ToolOverlay({
                   height: FUEL_GAUGE_HEIGHT_PX,
                   background: FUEL_GAUGE_BG,
                   marginTop: 2,
-                }}
-                title={`${Math.round(tokenRatio * 100)}% context used (${(totalTokens / 1000).toFixed(0)}k tokens)`}
-              >
+                  }}
+                  title={t('status.contextUsed', {
+                    percent: Math.round(tokenRatio * 100),
+                    tokens: (totalTokens / 1000).toFixed(0),
+                  })}
+                >
                 <div
                   style={{
                     width: `${Math.min(tokenRatio * 100, 100)}%`,

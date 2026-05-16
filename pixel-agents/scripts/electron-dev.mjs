@@ -17,6 +17,7 @@ const children = new Set();
 function spawnManaged(command, args, options) {
   const child = spawn(command, args, {
     stdio: 'inherit',
+    shell: process.platform === 'win32',
     ...options,
   });
 

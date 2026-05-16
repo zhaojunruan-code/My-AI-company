@@ -41,6 +41,7 @@ import {
   GLOBAL_KEY_ALWAYS_SHOW_LABELS,
   GLOBAL_KEY_HOOKS_ENABLED,
   GLOBAL_KEY_HOOKS_INFO_SHOWN,
+  GLOBAL_KEY_LANGUAGE,
   GLOBAL_KEY_LAST_SEEN_VERSION,
   GLOBAL_KEY_SOUND_ENABLED,
   GLOBAL_KEY_WATCH_ALL_SESSIONS,
@@ -405,6 +406,9 @@ export class PixelAgentsViewProvider implements vscode.WebviewViewProvider {
         this.context.globalState.update(GLOBAL_KEY_SOUND_ENABLED, message.enabled);
       } else if (message.type === 'setLastSeenVersion') {
         this.context.globalState.update(GLOBAL_KEY_LAST_SEEN_VERSION, message.version as string);
+      } else if (message.type === 'setLanguage') {
+        const language = message.language === 'zh' ? 'zh' : 'en';
+        this.context.globalState.update(GLOBAL_KEY_LANGUAGE, language);
       } else if (message.type === 'setAlwaysShowLabels') {
         this.context.globalState.update(GLOBAL_KEY_ALWAYS_SHOW_LABELS, message.enabled);
       } else if (message.type === 'setHooksEnabled') {
@@ -491,6 +495,7 @@ export class PixelAgentsViewProvider implements vscode.WebviewViewProvider {
           GLOBAL_KEY_LAST_SEEN_VERSION,
           '',
         );
+        const language = this.context.globalState.get<string>(GLOBAL_KEY_LANGUAGE, '');
         const extensionVersion =
           (this.context.extension.packageJSON as { version?: string }).version ?? '';
         const watchAllSessions = this.context.globalState.get<boolean>(
@@ -512,6 +517,7 @@ export class PixelAgentsViewProvider implements vscode.WebviewViewProvider {
           type: 'settingsLoaded',
           soundEnabled,
           lastSeenVersion,
+          language,
           extensionVersion,
           watchAllSessions,
           alwaysShowLabels,

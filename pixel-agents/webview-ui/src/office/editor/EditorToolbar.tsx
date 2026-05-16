@@ -5,6 +5,8 @@ import { ColorPicker } from '../../components/ui/ColorPicker.js';
 import { ItemSelect } from '../../components/ui/ItemSelect.js';
 import type { ColorValue } from '../../components/ui/types.js';
 import { CANVAS_FALLBACK_TILE_COLOR } from '../../constants.js';
+import type { TranslationKey } from '../../i18n.js';
+import { useI18n } from '../../i18n.js';
 import { getColorizedSprite } from '../colorize.js';
 import { getColorizedFloorSprite, getFloorPatternCount, hasFloorSprites } from '../floorTiles.js';
 import type { FurnitureCategory, LoadedAssetData } from '../layout/furnitureCatalog.js';
@@ -59,6 +61,7 @@ export function EditorToolbar({
   onFurnitureTypeChange,
   loadedAssets,
 }: EditorToolbarProps) {
+  const { t, translateFurnitureLabel } = useI18n();
   const [activeCategory, setActiveCategory] = useState<FurnitureCategory>('desks');
   const [showColor, setShowColor] = useState(false);
   const [showWallColor, setShowWallColor] = useState(false);
@@ -114,33 +117,33 @@ export function EditorToolbar({
           variant={isFurnitureActive ? 'active' : 'default'}
           size="md"
           onClick={() => onToolChange(EditTool.FURNITURE_PLACE)}
-          title="Place furniture"
+          title={t('editor.furnitureTitle')}
         >
-          Furniture
+          {t('editor.furniture')}
         </Button>
         <Button
           variant={isFloorActive ? 'active' : 'default'}
           size="md"
           onClick={() => onToolChange(EditTool.TILE_PAINT)}
-          title="Paint floor tiles"
+          title={t('editor.floorTitle')}
         >
-          Floor
+          {t('editor.floor')}
         </Button>
         <Button
           variant={isWallActive ? 'active' : 'default'}
           size="md"
           onClick={() => onToolChange(EditTool.WALL_PAINT)}
-          title="Paint walls (click to toggle)"
+          title={t('editor.wallTitle')}
         >
-          Wall
+          {t('editor.wall')}
         </Button>
         <Button
           variant={isEraseActive ? 'active' : 'default'}
           size="md"
           onClick={() => onToolChange(EditTool.ERASE)}
-          title="Erase tiles to void"
+          title={t('editor.eraseTitle')}
         >
-          Erase
+          {t('editor.erase')}
         </Button>
       </div>
 
@@ -153,17 +156,17 @@ export function EditorToolbar({
               variant={showColor ? 'active' : 'default'}
               size="sm"
               onClick={() => setShowColor((v) => !v)}
-              title="Adjust floor color"
+              title={t('editor.floorColorTitle')}
             >
-              Color
+              {t('editor.color')}
             </Button>
             <Button
               variant={activeTool === EditTool.EYEDROPPER ? 'active' : 'ghost'}
               size="sm"
               onClick={() => onToolChange(EditTool.EYEDROPPER)}
-              title="Pick floor pattern + color from existing tile"
+              title={t('editor.pickFloorTitle')}
             >
-              Pick
+              {t('editor.pick')}
             </Button>
           </div>
 
@@ -179,7 +182,7 @@ export function EditorToolbar({
                 height={32}
                 selected={selectedTileType === patIdx}
                 onClick={() => onTileTypeChange(patIdx as TileTypeVal)}
-                title={`Floor ${patIdx}`}
+                title={t('editor.floorPattern', { index: patIdx })}
                 deps={[patIdx, floorColor]}
                 draw={(ctx, w, h) => {
                   if (!hasFloorSprites()) {
@@ -205,9 +208,9 @@ export function EditorToolbar({
               variant={showWallColor ? 'active' : 'default'}
               size="sm"
               onClick={() => setShowWallColor((v) => !v)}
-              title="Adjust wall color"
+              title={t('editor.wallColorTitle')}
             >
-              Color
+              {t('editor.color')}
             </Button>
           </div>
 
@@ -224,7 +227,7 @@ export function EditorToolbar({
                   height={64}
                   selected={selectedWallSet === i}
                   onClick={() => onWallSetChange(i)}
-                  title={`Wall ${i + 1}`}
+                  title={t('editor.wallSet', { index: i + 1 })}
                   deps={[i, wallColor]}
                   draw={(ctx, w, h) => {
                     const sprite = getWallSetPreviewSprite(i);
@@ -259,7 +262,7 @@ export function EditorToolbar({
                 size="sm"
                 onClick={() => setActiveCategory(cat.id)}
               >
-                {cat.label}
+                {t(`category.${cat.id}` as TranslationKey)}
               </Button>
             ))}
             <div className="w-[1px] h-14 bg-white/15 mx-2 shrink-0" />
@@ -267,9 +270,9 @@ export function EditorToolbar({
               variant={activeTool === EditTool.FURNITURE_PICK ? 'active' : 'ghost'}
               size="sm"
               onClick={() => onToolChange(EditTool.FURNITURE_PICK)}
-              title="Pick furniture type from placed item"
+              title={t('editor.pickFurnitureTitle')}
             >
-              Pick
+              {t('editor.pick')}
             </Button>
           </div>
           {/* Furniture items — single-row horizontal carousel at 2x */}
@@ -281,7 +284,7 @@ export function EditorToolbar({
                 height={thumbSize}
                 selected={selectedFurnitureType === entry.type}
                 onClick={() => onFurnitureTypeChange(entry.type)}
-                title={entry.label}
+                title={translateFurnitureLabel(entry.label)}
                 deps={[entry.type, entry.sprite]}
                 draw={(ctx, w, h) => {
                   const cached = getCachedSprite(entry.sprite, 2);
@@ -304,18 +307,18 @@ export function EditorToolbar({
               variant={showFurnitureColor ? 'active' : 'default'}
               size="sm"
               onClick={() => setShowFurnitureColor((v) => !v)}
-              title="Adjust selected furniture color"
+              title={t('editor.furnitureColorTitle')}
             >
-              Color
+              {t('editor.color')}
             </Button>
             {selectedFurnitureColor && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => onSelectedFurnitureColorChange(null)}
-                title="Remove color (restore original)"
+                title={t('editor.clearColorTitle')}
               >
-                Clear
+                {t('common.clear')}
               </Button>
             )}
           </div>

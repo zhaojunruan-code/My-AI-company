@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { SUPPORTED_LANGUAGES, useI18n } from '../i18n.js';
 import { isSoundEnabled, setSoundEnabled } from '../notificationSound.js';
 import { vscode } from '../vscodeApi.js';
 import { Button } from './ui/Button.js';
@@ -34,17 +35,33 @@ export function SettingsModal({
   hooksEnabled,
   onToggleHooksEnabled,
 }: SettingsModalProps) {
+  const { language, setLanguage, t } = useI18n();
   const [soundLocal, setSoundLocal] = useState(isSoundEnabled);
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Settings">
+    <Modal isOpen={isOpen} onClose={onClose} title={t('settings.title')}>
+      <div className="flex items-center justify-between w-full py-6 px-10 gap-10">
+        <span>{t('language.label')}</span>
+        <div className="flex gap-3">
+          {SUPPORTED_LANGUAGES.map((item) => (
+            <Button
+              key={item}
+              variant={language === item ? 'active' : 'ghost'}
+              size="sm"
+              onClick={() => setLanguage(item)}
+            >
+              {item === 'zh' ? t('language.chinese') : t('language.english')}
+            </Button>
+          ))}
+        </div>
+      </div>
       <MenuItem
         onClick={() => {
           vscode.postMessage({ type: 'openSessionsFolder' });
           onClose();
         }}
       >
-        Open Sessions Folder
+        {t('settings.openSessionsFolder')}
       </MenuItem>
       <MenuItem
         onClick={() => {
@@ -52,7 +69,7 @@ export function SettingsModal({
           onClose();
         }}
       >
-        Export Layout
+        {t('settings.exportLayout')}
       </MenuItem>
       <MenuItem
         onClick={() => {
@@ -60,7 +77,7 @@ export function SettingsModal({
           onClose();
         }}
       >
-        Import Layout
+        {t('settings.importLayout')}
       </MenuItem>
       <MenuItem
         onClick={() => {
@@ -68,7 +85,7 @@ export function SettingsModal({
           onClose();
         }}
       >
-        Add Asset Directory
+        {t('settings.addAssetDirectory')}
       </MenuItem>
       {externalAssetDirectories.map((dir) => (
         <div key={dir} className="flex items-center justify-between py-4 px-10 gap-8">
@@ -83,13 +100,14 @@ export function SettingsModal({
             size="sm"
             onClick={() => vscode.postMessage({ type: 'removeExternalAssetDirectory', path: dir })}
             className="shrink-0"
+            title={t('settings.removeAssetDirectory')}
           >
             x
           </Button>
         </div>
       ))}
       <Checkbox
-        label="Sound Notifications"
+        label={t('settings.soundNotifications')}
         checked={soundLocal}
         onChange={() => {
           const newVal = !isSoundEnabled();
@@ -99,21 +117,21 @@ export function SettingsModal({
         }}
       />
       <Checkbox
-        label="Watch All Sessions"
+        label={t('settings.watchAllSessions')}
         checked={watchAllSessions}
         onChange={onToggleWatchAllSessions}
       />
       <Checkbox
-        label="Instant Detection (Hooks)"
+        label={t('settings.instantDetection')}
         checked={hooksEnabled}
         onChange={onToggleHooksEnabled}
       />
       <Checkbox
-        label="Always Show Labels"
+        label={t('settings.alwaysShowLabels')}
         checked={alwaysShowOverlay}
         onChange={onToggleAlwaysShowOverlay}
       />
-      <Checkbox label="Debug View" checked={isDebugMode} onChange={onToggleDebugMode} />
+      <Checkbox label={t('settings.debugView')} checked={isDebugMode} onChange={onToggleDebugMode} />
     </Modal>
   );
 }

@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 
+import { useI18n } from '../i18n.js';
+
 interface TooltipProps {
   title: string;
   onDismiss: () => void;
@@ -15,6 +17,8 @@ const positionStyles: Record<string, React.CSSProperties> = {
 };
 
 export function Tooltip({ title, onDismiss, position = 'top-right', children }: TooltipProps) {
+  const { t } = useI18n();
+
   return (
     <div
       className="absolute z-20 pixel-panel whitespace-nowrap p-0"
@@ -25,6 +29,7 @@ export function Tooltip({ title, onDismiss, position = 'top-right', children }: 
         <button
           onClick={onDismiss}
           className="bg-transparent border-none text-text-muted cursor-pointer text-sm px-2 leading-none"
+          title={t('common.close')}
         >
           x
         </button>

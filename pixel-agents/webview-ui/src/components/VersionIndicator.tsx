@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { toMajorMinor } from '../changelogData.ts';
 import { WHATS_NEW_AUTO_CLOSE_MS, WHATS_NEW_FADE_MS } from '../constants.ts';
+import { useI18n } from '../i18n.js';
 import { Button } from './ui/Button.js';
 
 interface VersionIndicatorProps {
@@ -17,6 +18,7 @@ export function VersionIndicator({
   onDismiss,
   onOpenChangelog,
 }: VersionIndicatorProps) {
+  const { t } = useI18n();
   const [dismissed, setDismissed] = useState(false);
   const [fading, setFading] = useState(false);
   const [labelHovered, setLabelHovered] = useState(false);
@@ -71,13 +73,19 @@ export function VersionIndicator({
         >
           <div className="flex justify-between items-center gap-10">
             <span className="text-lg text-accent-bright leading-none">
-              Updated to v{currentMajorMinor}!
+              {t('version.updated', { version: currentMajorMinor })}
             </span>
-            <Button variant="ghost" size="icon" onClick={handleDismiss} className="leading-none">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleDismiss}
+              className="leading-none"
+              title={t('common.close')}
+            >
               x
             </Button>
           </div>
-          <span className="text-sm whitespace-nowrap">See what's new</span>
+          <span className="text-sm whitespace-nowrap">{t('version.seeWhatsNew')}</span>
         </div>
       )}
       {/* Hover tooltip — "See what's new" appears on label hover after notice is gone */}
@@ -86,7 +94,7 @@ export function VersionIndicator({
           onClick={handleOpenChangelog}
           className="absolute bottom-42 right-28 z-20 pixel-panel py-6 px-12 cursor-pointer text-sm whitespace-nowrap"
         >
-          See what's new!
+          {t('version.seeWhatsNewBang')}
         </div>
       )}
       {/* Version label — always visible */}
